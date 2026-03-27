@@ -1,0 +1,106 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  MANAGER
+  USER
+}
+
+model User {
+  id                 String   @id @default(cuid())
+  matriculaDigits     String   @unique
+  name               String
+  role               Role     @default(USER)
+  unit               String?
+  unitScopes          String[] @default([])
+  isActive           Boolean  @default(true)
+
+  passwordHash       String?
+  mustChangePassword Boolean  @default(true)
+
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  personnel          Personnel?
+  sessions           Session[]
+  auditLogs          AuditLog[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  @@index([userId])
+}
+
+model Personnel {
+  id       String  @id @default(cuid())
+  userId   String? @unique
+  user     User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  ant      Int
+  grad     String
+  quadro   String
+  nome     String
+  matr     String
+  unid     String
+  secao    String
+  situacao String
+  esc      String
+
+  saldoFerias Int @default(30)
+  saldoAbono  Int @default(5)
+
+  restrictionStart DateTime?
+  restrictionEnd   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  leaves    LeaveRecord[]
+
+  @@index([unid])
+  @@index([matr])
+}
+
+model LeaveRecord {
+  id          String   @id @default(cuid())
+  personnelId String
+  personnel   Personnel @relation(fields: [personnelId], references: [id], onDelete: Cascade)
+
+  type        String
+  startDate   DateTime
+  endDate     DateTime
+  notes       String?
+  createdAt   DateTime @default(now())
+  createdById String?
+  createdBy   User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([personnelId])
+  @@index([startDate])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String
+  target    String?
+  meta      Json?
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
